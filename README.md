@@ -9,7 +9,6 @@ A full stack web application built for the Roxiler Systems internship assessment
 - Frontend: React (Vite)
 - Authentication: JWT based, with role based access control
 
-
 ## Roles and Features
 
 **System Administrator**
