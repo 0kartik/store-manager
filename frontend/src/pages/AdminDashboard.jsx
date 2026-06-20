@@ -44,6 +44,10 @@ function UsersTab() {
   const [sortBy, setSortBy] = useState('name');
   const [order, setOrder] = useState('asc');
 
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+
   const fetchUsers = useCallback(() => {
     api.get('/admin/users', { params: { ...filters, sortBy, order } })
       .then((res) => setUsers(res.data.users));
@@ -54,6 +58,25 @@ function UsersTab() {
   function handleSort(key) {
     if (sortBy === key) setOrder(order === 'asc' ? 'desc' : 'asc');
     else { setSortBy(key); setOrder('asc'); }
+  }
+
+  async function handleView(userId) {
+    setDetailError('');
+    setDetailLoading(true);
+    setSelectedUser({ id: userId }); // open modal immediately with a loading state
+    try {
+      const res = await api.get(`/admin/users/${userId}`);
+      setSelectedUser(res.data.user);
+    } catch (err) {
+      setDetailError(err.response?.data?.message || 'Failed to load user details');
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  function closeModal() {
+    setSelectedUser(null);
+    setDetailError('');
   }
 
   return (
@@ -76,6 +99,7 @@ function UsersTab() {
           { key: 'email', label: 'Email' },
           { key: 'address', label: 'Address' },
           { key: 'role', label: 'Role' },
+          { key: 'view', label: '', sortable: false },
         ]}
         data={users}
         sortBy={sortBy}
@@ -87,9 +111,34 @@ function UsersTab() {
             <td>{u.email}</td>
             <td>{u.address}</td>
             <td>{u.role}</td>
+            <td><button className="link-btn" onClick={() => handleView(u.id)}>View</button></td>
           </tr>
         )}
       />
+
+      {selectedUser && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={closeModal}>&times;</button>
+            <h3>User Details</h3>
+            {detailLoading ? (
+              <p>Loading...</p>
+            ) : detailError ? (
+              <div className="error">{detailError}</div>
+            ) : (
+              <div className="detail-grid">
+                <div><strong>Name</strong><span>{selectedUser.name}</span></div>
+                <div><strong>Email</strong><span>{selectedUser.email}</span></div>
+                <div><strong>Address</strong><span>{selectedUser.address || '—'}</span></div>
+                <div><strong>Role</strong><span>{selectedUser.role}</span></div>
+                {selectedUser.role === 'STORE_OWNER' && (
+                  <div><strong>Rating</strong><span>{selectedUser.rating}</span></div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
