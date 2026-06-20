@@ -1,66 +1,128 @@
 # Store Rating Platform
 
-Full-stack app: Express + PostgreSQL (raw SQL via `pg`) + React (Vite).
+A full stack web application built for the Roxiler Systems internship assessment. The platform allows users to rate registered stores on a scale of 1 to 5, with separate dashboards for system administrators, normal users, and store owners.
 
-## 0. Get a Postgres database (2 minutes, no local install)
-You already have a Supabase account from QuickDyne/G-KAP. Fastest path:
-1. Go to supabase.com → your project (or create a new one) → Project Settings → Database.
-2. Copy the **Connection string** (URI, "Transaction pooler" or "Direct connection" both work).
-3. That's your `DATABASE_URL`.
+## Tech Stack
 
-(If you'd rather run Postgres locally, that works too — just point `DATABASE_URL` at it.)
+- Backend: Express.js with raw SQL queries via the `pg` library
+- Database: PostgreSQL
+- Frontend: React (Vite)
+- Authentication: JWT based, with role based access control
 
-## 1. Backend setup
+## Roles and Features
+
+**System Administrator**
+- Dashboard showing total users, total stores, and total ratings
+- Add new users and stores (any role, including additional admins)
+- View and filter users and stores by name, email, address, and role
+- Sort listings by any column
+- Backend route for viewing a single user's details, including their rating if they are a Store Owner, is implemented at `GET /admin/users/:id`. A UI entry point for this (a "View" link or modal on the Users tab) is the one remaining piece to confirm and wire up before submission.
+
+**Normal User**
+- Sign up and log in
+- Browse stores and search by name and address
+- View store name, address, overall rating, and their own submitted rating
+- Submit and modify a rating (1 to 5) for any store
+- Update password after logging in
+
+**Store Owner**
+- Dashboard showing the average rating for their store
+- View the list of users who have rated their store
+- Update password after logging in
+
+All form inputs are validated on both the client and server side, including:
+- Name: 20 to 60 characters
+- Address: up to 400 characters
+- Password: 8 to 16 characters, including at least one uppercase letter and one special character
+- Email: standard email format
+
+## Getting Started
+
+### 1. Database Setup
+
+This project requires a PostgreSQL database. A Supabase project works well for this.
+
+1. Go to supabase.com and open your project (or create a new one)
+2. Navigate to Project Settings > Database
+3. Copy the connection string under "Connection string" (URI)
+4. This becomes your `DATABASE_URL`
+
+A local PostgreSQL installation works equally well if preferred.
+
+### 2. Backend Setup
+
 ```bash
 cd backend
 npm install
 cp .env.example .env
-# edit .env: paste your DATABASE_URL and set a random JWT_SECRET
 ```
 
-Create the schema (run this SQL against your DB — easiest via Supabase's SQL editor, or psql):
+Edit `.env` and add your `DATABASE_URL` and a `JWT_SECRET` value.
+
+Apply the schema:
+
 ```bash
 psql "$DATABASE_URL" -f src/db/schema.sql
 ```
 
-Seed the admin account:
+Seed the default administrator account:
+
 ```bash
 npm run seed
 ```
-This prints the admin email/password (admin@storerating.com / Admin@1234). Log in with that, then change the password.
 
-Start the server:
+This creates an admin account with the credentials below. Log in and change the password after the first session.
+
+```
+Email: admin@storerating.com
+Password: Admin@1234
+```
+
+Start the backend server:
+
 ```bash
 npm run dev
 ```
-Should print `Server running on port 5000`. Test it: `curl http://localhost:5000/api/health`
 
-## 2. Frontend setup
+The server runs on port 5000 by default. You can verify it is running with:
+
+```bash
+curl http://localhost:5000/api/health
+```
+
+### 3. Frontend Setup
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Open http://localhost:5173. The Vite dev server proxies `/api` to localhost:5000, so don't change ports unless you update vite.config.js too.
 
-## 3. Walkthrough to verify everything works (do this before you submit)
-1. Log in as admin (admin@storerating.com / Admin@1234) → Admin Dashboard loads with 0/0/0 stats.
-2. Add User → create a Store Owner (role = STORE_OWNER).
-3. Add Store → create a store, set Owner user ID to the store owner's id (check the Users tab for their id — you may need to expose ids in the table or query the DB directly: `SELECT id, email FROM users WHERE role='STORE_OWNER';`).
-4. Logout → Sign Up as a new normal user.
-5. Go to Browse Stores → rate the store you created.
-6. Logout → log in as the store owner → see the rating and average on their dashboard.
-7. Logout → log in as admin → confirm the dashboard counts updated.
+The application runs at http://localhost:5173. The Vite development server proxies `/api` requests to port 5000, so the backend should be running before starting the frontend.
 
-## What's covered vs. spec
-- Single login, 3 roles, role-based routing — done.
-- Admin: dashboard stats, add user/store (any role), filterable+sortable user/store lists, user detail with rating-if-store-owner (backend route `/admin/users/:id` exists; not yet wired to a detail page in the UI — add a "View" link/modal if you have spare time before submitting).
-- Normal user: signup, browse/search stores, submit/modify rating (1-5), change password — done.
-- Store owner: dashboard with raters list + average rating, change password — done.
-- Validation rules (name 20-60, address ≤400, password 8-16 + uppercase + special, email format) — enforced both client-side and server-side.
-- Sorting on key fields — done (click column headers).
+## Verifying the Application
 
-## Known gaps if a reviewer pokes hard
-- No automated tests (skip unless you have hours to spare — not worth it in 24h).
-- Admin "Add Store" requires you to type an owner's user ID manually instead of picking from a dropdown — fine for a 24h build, mention it as a "next step" if asked.
-- No pagination — fine for a sample dataset; mention as a scaling consideration if asked in an interview.
+1. Log in as the administrator using the seeded credentials. The dashboard should load with zero users, stores, and ratings.
+2. Create a new user with the role "Store Owner."
+3. Create a new store and assign it to the store owner using their user ID (visible in the Users tab, or via `SELECT id, email FROM users WHERE role='STORE_OWNER';`).
+4. Log out and register a new normal user account.
+5. Browse stores and submit a rating for the store created earlier.
+6. Log out and log in as the store owner to confirm the rating and average appear correctly.
+7. Log out and log in as the administrator to confirm the dashboard counts have updated.
+
+## Project Structure
+
+```
+backend/
+  src/
+    db/          Database connection, schema, and seed script
+    middleware/  Authentication middleware
+    routes/      Admin, auth, store, and user routes
+    utils/       JWT helpers and input validators
+
+frontend/
+  src/
+    components/  Navbar and sortable table components
+    context/     Authentication context
+    pages/       Login, signup, and dashboard pages
+```
